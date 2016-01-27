@@ -1,0 +1,428 @@
+{
+  "AWSTemplateFormatVersion" : "2010-09-09",
+
+  "Description" : "Jenkins",
+
+  "Parameters" : {
+
+    "Email" : {
+      "Type" : "String"
+    },
+
+    "SetupTemplate" : {
+      "Type" : "String"
+    },
+
+    "ApplicationName" : {
+      "Type" : "String",
+      "Default" : "jenkins"
+    },
+
+    "HostedZone" : {
+      "Type" : "String"
+    },
+
+    "Group" : {
+      "Type" : "String"
+    },
+
+    "GithubOrganization" : {
+      "Type" : "String"
+    },
+
+    "ProjectName" : {
+      "Type" : "String"
+    },
+
+    "KeyName" : {
+      "Description" : "Name of an existing EC2 KeyPair to enable SSH access to the instances",
+      "Type" : "String",
+      "MinLength": "1",
+      "MaxLength": "64",
+      "AllowedPattern" : "[-_ a-zA-Z0-9]*",
+      "ConstraintDescription" : "can contain only alphanumeric characters, spaces, dashes and underscores."
+    },
+
+    "InstanceType" : {
+      "Description" : "Jenkins EC2 instance type",
+      "Type" : "String",
+      "ConstraintDescription" : "must be a valid EC2 instance type."
+    },
+
+    "ReadOnlyBucket" : {
+      "Description" : "Bucket with the binaries required for building and deploy Havoc",
+      "Type" : "String"
+      },
+
+    "StackBucket" : {
+      "Description" : "Bucket for storing artifacts for this pipeline",
+      "Type" : "String"
+    }
+  },
+
+  "Mappings" : {
+    "AWSInstanceType2Arch" : {
+      "t1.micro"    : { "Arch" : "64" },
+      "m1.small"    : { "Arch" : "64" },
+      "m1.large"    : { "Arch" : "64" },
+      "m1.xlarge"   : { "Arch" : "64" },
+      "m2.xlarge"   : { "Arch" : "64" },
+      "m2.2xlarge"  : { "Arch" : "64" },
+      "m2.4xlarge"  : { "Arch" : "64" },
+      "c1.medium"   : { "Arch" : "64" },
+      "c1.xlarge"   : { "Arch" : "64" },
+      "cc1.4xlarge" : { "Arch" : "64" }
+    },
+    "AWSRegionArch2AMI" : {
+      "us-east-1"      : { "32" : "ami-7f418316", "64" : "ami-7341831a" },
+      "us-west-1"      : { "32" : "ami-951945d0", "64" : "ami-971945d2" },
+      "us-west-2"      : { "32" : "ami-16fd7026", "64" : "ami-10fd7020" },
+      "eu-west-1"      : { "32" : "ami-24506250", "64" : "ami-20506254" },
+      "ap-southeast-1" : { "32" : "ami-74dda626", "64" : "ami-7edda62c" },
+      "ap-northeast-1" : { "32" : "ami-dcfa4edd", "64" : "ami-e8fa4ee9" }
+    },
+    "S3RegionEndPoints" : {
+      "us-east-1"      : { "Endpoint" : "s3-external-1.amazonaws.com" },
+      "us-west-1"      : { "Endpoint" : "s3-us-west-1.amazonaws.com" },
+      "us-west-2"      : { "Endpoint" : "s3-us-west-2.amazonaws.com" },
+      "sa-east-1"      : { "Endpoint" : "s3-sa-east-1.amazonaws.com" },
+      "eu-west-1"      : { "Endpoint" : "s3-eu-west-1.amazonaws.com" },
+      "ap-southeast-1" : { "Endpoint" : "s3-ap-southeast-1.amazonaws.com" },
+      "ap-northeast-1" : { "Endpoint" : "s3-ap-northeast-1.amazonaws.com" }
+    }
+  },
+
+  "Resources" : {
+
+    "addUserToGroup" : {
+      "Type" : "AWS::IAM::UserToGroupAddition",
+      "Properties" : {
+        "GroupName" : { "Ref" : "Group" },
+        "Users" : [ { "Ref" : "User" } ]
+      }
+    },
+
+    "User" : {
+      "Type" : "AWS::IAM::User",
+      "Properties" : {
+        "Path": "/",
+        "Policies": [{
+          "PolicyName": "root",
+          "PolicyDocument": { "Statement":[{
+            "Effect":"Allow",
+            "Action":"*",
+            "Resource":"*"
+          }
+          ]}
+        }]
+      }
+    },
+
+    "MySNSTopic" : {
+      "Type" : "AWS::SNS::Topic",
+      "Properties" : {
+        "Subscription" : [ {
+          "Endpoint" : { "Ref": "Email" },
+          "Protocol" : "email"
+        } ]
+      }
+    },
+
+    "HostKeys" : {
+      "Type" : "AWS::IAM::AccessKey",
+      "Properties" : {
+        "UserName" : { "Ref": "User" }
+      }
+    },
+
+    "JenkinsDNS" : {
+      "Type" : "AWS::Route53::RecordSetGroup",
+      "Properties" : {
+        "HostedZoneName" : { "Fn::Join" : [ "", [ {"Ref" : "HostedZone"}, "." ]]},
+        "RecordSets" : [
+          {
+            "Name" : { "Fn::Join" : ["", [ { "Ref" : "ApplicationName" }, ".", { "Ref" : "HostedZone" }, "." ]]},
+            "Type" : "A",
+            "TTL"  : "900",
+            "ResourceRecords" : [ { "Ref" : "IPAddress" } ]
+          }]
+      }
+    },
+
+    "WebServer": {
+      "Type": "AWS::EC2::Instance",
+      "Metadata" : {
+        "AWS::CloudFormation::Init" : {
+          "config" : {
+            "files" : {
+              "/tmp/setup.mysql" : {
+                "content" : "this is just a file proving this actually works...",
+                "mode"  : "000644",
+                "owner" : "root",
+                "group" : "root"
+              },
+              "/usr/share/tomcat6/webapps/jenkins.war" : {
+                "source" : "http://mirrors.jenkins-ci.org/war/1.480/jenkins.war",
+                "mode" : "000744",
+                "owner" : "tomcat",
+                "group" : "tomcat",
+                "authentication" : "S3AccessCreds"
+              },
+              "/usr/share/tomcat6/.ssh/id_rsa" : {
+                "source" : { "Fn::Join" : ["", ["https://", { "Fn::FindInMap" : [ "S3RegionEndPoints", { "Ref" : "AWS::Region" }, "Endpoint"]} ,"/", { "Ref" : "StackBucket" }, "/private/id_rsa"]]},
+                "mode" : "000600",
+                "owner" : "tomcat",
+                "group" : "tomcat",
+                "authentication" : "S3AccessCreds"
+              },
+              "/home/ec2-user/common-step-definitions-1.0.0.gem" : {
+                "source" : { "Fn::Join" : ["", ["https://s3-external-1.amazonaws.com/", { "Ref" : "ReadOnlyBucket" }, "/resources/gems/common-step-definitions-1.0.0.gem"]]},
+                "mode" : "000700",
+                "owner" : "root",
+                "group" : "root",
+                "authentication" : "S3AccessCreds"
+              },
+              "/etc/cron.hourly/transient_environments.rb" : {
+                "source" : { "Fn::Join" : ["", ["https://s3-external-1.amazonaws.com/", { "Ref" : "ReadOnlyBucket" }, "/transient_environments.rb"]]},
+                "mode"   : "000500",
+                "owner"  : "root",
+                "group"  : "root",
+                "authentication" : "S3AccessCreds"
+              },
+              "/usr/share/tomcat6/aws_access" : {
+                "content" : { "Fn::Join" : ["", [
+                  "AWSAccessKeyId=", { "Ref" : "HostKeys" }, "\n",
+                  "AWSSecretKey=", {"Fn::GetAtt": ["HostKeys", "SecretAccessKey"]}
+                ]]},
+                "mode"   : "000400",
+                "owner"  : "tomcat",
+                "group"  : "tomcat",
+                "authentication" : "S3AccessCreds"
+              },
+              "/opt/aws/aws.config" : {
+                "content" : { "Fn::Join" : ["", [
+                  "AWS.config(\n",
+                  ":access_key_id => \"", { "Ref" : "HostKeys" }, "\",\n",
+                  ":secret_access_key => \"", {"Fn::GetAtt": ["HostKeys", "SecretAccessKey"]}, "\",\n", 
+                  ":region => \"", { "Ref" : "AWS::Region" }, "\")\n"
+                ]]},
+                "mode"   : "000500",
+                "owner"  : "tomcat",
+                "group"  : "tomcat"
+              },
+              "/etc/httpd/conf.d/virtualhost.conf" : {
+                "content" : { "Fn::Join" : ["", [
+                  "NameVirtualHost *:80\n",
+                  "<VirtualHost *:80>\n",
+                  "ProxyPass         /jenkins  http://localhost:8080/jenkins\n",
+                  "ProxyPassReverse  /jenkins  http://localhost:8080/jenkins\n",
+                  "ProxyRequests     Off\n",
+
+                  "<Proxy http://localhost:8080/jenkins*>\n",
+                  "Order deny,allow\n",
+                  "Allow from all\n",
+                  "</Proxy>\n",
+                  "RewriteEngine On\n",
+                  "RewriteRule   ^/$ http://", { "Fn::Join" : ["", [{ "Ref" : "ApplicationName" }, ".", { "Ref" : "HostedZone" }]] }, "/jenkins$1 [NC,P]\n",
+                  "</VirtualHost>"
+                ]]},
+                "mode"   : "000544",
+                "owner"  : "root",
+                "group"  : "root"
+              },
+              "/usr/share/tomcat6/.ssh/config" : {
+                "content" : { "Fn::Join" : ["", [
+                  "Host github.com\n",
+                  "StrictHostKeyChecking no\n"
+                ]]},
+                "mode"   : "000600",
+                "owner"  : "root",
+                "group"  : "root"
+              },
+              "/usr/share/tomcat6/.route53" : {
+                "content" : { "Fn::Join" : ["", [
+                  "access_key: ", { "Ref" : "HostKeys" }, "\n",
+                  "secret_key: ", {"Fn::GetAtt": ["HostKeys", "SecretAccessKey"]}, "\n",
+                  "api: '2012-02-29'\n",
+                  "endpoint: https://route53.amazonaws.com/\n",
+                  "default_ttl: '3600'"
+                ]]},
+                "mode"   : "000700",
+                "owner"  : "tomcat",
+                "group"  : "tomcat"
+              }
+            },
+            "packages" : {
+              "yum" : {
+                "tomcat6"       : [],
+                "git"           : [],
+                "gcc"           : [],
+                "libxslt-devel" : [],
+                "ruby-devel"    : [],
+                "httpd"         : []
+              }
+            }
+          }          
+        },
+        "AWS::CloudFormation::Authentication" : {
+          "S3AccessCreds" : {
+            "type" : "S3",
+            "accessKeyId" : { "Ref" : "HostKeys" },
+            "secretKey" : {"Fn::GetAtt": ["HostKeys", "SecretAccessKey"]},
+            "buckets" : [ { "Ref" : "StackBucket"} ]
+          }
+        }
+      },
+      "Properties": {
+        "ImageId" : { "Fn::FindInMap" : [ "AWSRegionArch2AMI", { "Ref" : "AWS::Region" },
+                                          { "Fn::FindInMap" : [ "AWSInstanceType2Arch", { "Ref" : "InstanceType" }, "Arch" ] } ] },
+        "InstanceType"   : { "Ref" : "InstanceType" },
+        "SecurityGroups" : [ {"Ref" : "FrontendGroup"} ],
+        "KeyName"        : { "Ref" : "KeyName" },
+        "Tags": [ { "Key": "Name", "Value": "Jenkins" } ],
+        "UserData"       : { "Fn::Base64" : { "Fn::Join" : ["", [
+          "#!/bin/bash -v\n",
+          "date > starttime",
+          "yum -y install java-1.6.0-openjdk*\n",
+          "yum update -y aws-cfn-bootstrap\n",
+
+          "# Install Packages\n",
+          "/opt/aws/bin/cfn-init -v -s ", { "Ref" : "AWS::StackName" }, " -r WebServer ",
+          "    --access-key ", { "Ref" : "HostKeys" },
+          "    --secret-key ", { "Fn::GetAtt" : [ "HostKeys", "SecretAccessKey" ]},
+          "    --region ", { "Ref" : "AWS::Region" }, " || error_exit 'Failed to run cfn-init'\n",
+
+          "# Copy Github credentials to root ssh directory\n",
+          "cp /usr/share/tomcat6/.ssh/* /root/.ssh/\n",
+
+          "# Install Ruby Dependency\n",
+          
+          "# Install Ruby 1.9.3\n",
+          "yum -y erase ruby rubygems\n",
+          "yum -y install ruby19-devel\n",
+          "yum -y install libxml2-devel\n",
+          "yum -y install libxslt-devel\n",
+          "yum -y install git\n",
+          "yum -y install make\n",
+          "yum -y install gcc\n",
+
+          "# Move Ruby 1.9.3 to Default Ruby\n",
+          "rm -rf /usr/bin/ruby\n",
+          "ln -s /usr/bin/ruby1.9 /usr/bin/ruby\n",
+          "rm -rf /usr/bin/gem\n",
+          "ln -s /usr/bin/gem1.9 /usr/bin/gem\n",
+
+          "# Install S3 Gems\n",
+          "gem install /home/ec2-user/common-step-definitions-1.0.0.gem\n",
+
+          "# Install Public Gems\n",
+          "gem install bundler     --version 1.1.4    --no-rdoc --no-ri\n",
+          "gem install aws-sdk                        --no-rdoc --no-ri\n",
+          "gem install cucumber    --version 1.2.1    --no-rdoc --no-ri\n",
+          "gem install net-ssh     --version 2.5.2    --no-rdoc --no-ri\n",
+          "gem install capistrano  --version 2.12.0   --no-rdoc --no-ri\n",
+          "gem install route53     --version 0.2.1    --no-rdoc --no-ri\n",
+          "gem install rspec       --version 2.10.0   --no-rdoc --no-ri\n",
+          "gem install trollop     --version 2.0      --no-rdoc --no-ri\n",
+          "gem install rake        --version 0.9.2.2  --no-rdoc --no-ri\n",
+
+          "# Add id_rsa to ssh agent\n",
+          "eval `ssh-agent -s` \n",
+          "ssh-add /usr/share/tomcat6/.ssh/id_rsa\n",
+
+          "# Update Jenkins with versioned configuration\n",
+          "rm -rf /usr/share/tomcat6/.jenkins\n",
+          "git clone git@github.com:", { "Ref" : "GithubOrganization" }, "/", { "Ref" : "ProjectName" }, "_jenkins.git /usr/share/tomcat6/.jenkins\n",
+
+          "wget -P /tmp/ https://raw.github.com/stelligent/opendelivery_platform/master/lib/boot.rb --no-check-certificate\n",
+          "wget -P /tmp/ https://raw.github.com/stelligent/opendelivery_platform/master/lib/stack_builder.rb --no-check-certificate\n",
+          "wget -P /tmp/ https://raw.github.com/stelligent/opendelivery_platform/master/lib/cd_security_group.rb --no-check-certificate\n",
+          "wget -P /tmp/ https://raw.github.com/stelligent/opendelivery_platform/master/lib/terminate_instance.rb --no-check-certificate\n",
+          "wget -P /tmp/ https://raw.github.com/stelligent/opendelivery_platform/master/lib/set_properties.rb --no-check-certificate\n",
+
+          "# Set SNS Topic Property\n",
+          "echo ruby /tmp/set_properties.rb --sdbdomain ", { "Ref" : "SetupTemplate" }, " --itemname properties --property SNSTopic --value ", { "Ref" : "MySNSTopic" }, "\n",
+          "ruby /tmp/set_properties.rb --sdbdomain ", { "Ref" : "SetupTemplate" }, " --itemname properties --property SNSTopic --value ", { "Ref" : "MySNSTopic" }, "\n",
+
+          "echo ruby /tmp/cd_security_group.rb --sdbdomain ", { "Ref" : "SetupTemplate" }, " --securityGroupName ", { "Ref" : "InternalGroup" }, "\n",
+          "ruby /tmp/cd_security_group.rb --sdbdomain ", { "Ref" : "SetupTemplate" }, " --securityGroupName ", { "Ref" : "InternalGroup" }, "\n",
+
+          "# Add Jenkins Environment Variable\n",
+          "echo \"export SNS_TOPIC=", { "Ref" : "MySNSTopic" }, "\" >> /etc/sysconfig/tomcat6\n",
+          "echo \"export JENKINS_DOMAIN=", { "Fn::Join" : ["", ["http://", { "Ref" : "ApplicationName" }, ".", { "Ref" : "HostedZone" }]] }, "\" >> /etc/sysconfig/tomcat6\n",
+          "echo \"export JENKINS_ENVIRONMENT=", { "Ref" : "ApplicationName" }, "\" >> /etc/sysconfig/tomcat6\n",
+          "echo \"export SIMPLEDB_STACK=", { "Ref" : "SetupTemplate" }, "\" >> /etc/sysconfig/tomcat6\n",
+
+          "chown -R tomcat:tomcat /usr/share/tomcat6/\n",
+
+          "service tomcat6 restart\n",
+          "service httpd restart\n",
+
+          "# Disable tty for ec2-user\n",
+          "echo \"Defaults:%tomcat !requiretty\" >> /etc/sudoers\n",
+          "echo \"Defaults:tomcat !requiretty\" >> /etc/sudoers\n",
+
+          "/opt/aws/bin/cfn-signal", " -e 0", " '", { "Ref" : "WaitHandle" }, "'\n",
+          "#ruby /tmp/terminate_instance.rb --stackname ", { "Ref" : "SetupTemplate" }, "\n",
+          "date > stoptime"
+
+        ]]}}
+      }
+    },
+
+    "IPAddress" : {
+      "Type" : "AWS::EC2::EIP"
+    },
+
+    "IPAssoc" : {
+      "Type" : "AWS::EC2::EIPAssociation",
+      "Properties" : {
+        "InstanceId" : { "Ref" : "WebServer" },
+        "EIP" : { "Ref" : "IPAddress" }
+      }
+    },
+
+    "FrontendGroup" : {
+      "Type" : "AWS::EC2::SecurityGroup",
+      "Properties" : {
+        "GroupDescription" : "Enable SSH and access to Apache and Tomcat",
+        "SecurityGroupIngress" : [
+          {"IpProtocol" : "tcp", "FromPort" : "22", "ToPort" : "22", "CidrIp" : "0.0.0.0/0"},
+          {"IpProtocol" : "tcp", "FromPort" : "80", "ToPort" : "80", "CidrIp" : "0.0.0.0/0"}
+        ]
+      }
+    },
+
+    "InternalGroup" : {
+      "Type" : "AWS::EC2::SecurityGroup",
+      "Properties" : {
+        "GroupDescription" : "Enable SSH and access to Apache and Tomcat",
+        "SecurityGroupIngress" : [
+        ]
+      }
+    },
+
+    "WaitHandle" : {
+      "Type" : "AWS::CloudFormation::WaitConditionHandle"
+    },
+
+    "WaitCondition" : {
+      "Type" : "AWS::CloudFormation::WaitCondition",
+      "DependsOn" : "WebServer",
+      "Properties" : {
+        "Handle" : { "Ref" : "WaitHandle" },
+        "Timeout" : "1800"
+      }
+    }
+  },
+
+  "Outputs" : {
+    "Domain" : {
+      "Value" : { "Fn::Join" : ["", ["http://", { "Ref" : "ApplicationName" }, ".", { "Ref" : "HostedZone" }]] },
+      "Description" : "URL for newly created Jenkins app"
+    },
+    "InstanceIPAddress" : {
+      "Value" : { "Ref" : "IPAddress" }
+    }
+  }
+}
