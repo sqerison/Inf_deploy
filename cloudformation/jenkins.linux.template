@@ -6,11 +6,13 @@
   "Parameters" : {
 
     "Email" : {
-      "Type" : "String"
+      "Type" : "String",
+      "Default" : "volodymyr.shynkar@gmail.com"
     },
 
     "SetupTemplate" : {
-      "Type" : "String"
+      "Type" : "String",
+      "Default" : "jenkins"
     },
 
     "ApplicationName" : {
@@ -19,19 +21,23 @@
     },
 
     "HostedZone" : {
-      "Type" : "String"
+      "Type" : "String",
+      "Default" : "pzs.pp.ua"
     },
 
     "Group" : {
-      "Type" : "String"
+      "Type" : "String",
+      "Default" : "inf_deploy"
     },
 
     "GithubOrganization" : {
-      "Type" : "String"
+      "Type" : "String",
+      "Default" : "sqerison"
     },
 
     "ProjectName" : {
-      "Type" : "String"
+      "Type" : "String",
+      "Default" : "shopizer"
     },
 
     "KeyName" : {
@@ -40,23 +46,27 @@
       "MinLength": "1",
       "MaxLength": "64",
       "AllowedPattern" : "[-_ a-zA-Z0-9]*",
-      "ConstraintDescription" : "can contain only alphanumeric characters, spaces, dashes and underscores."
+      "ConstraintDescription" : "can contain only alphanumeric characters, spaces, dashes and underscores.",
+      "Default" : "aws_ireland"
     },
 
     "InstanceType" : {
       "Description" : "Jenkins EC2 instance type",
       "Type" : "String",
-      "ConstraintDescription" : "must be a valid EC2 instance type."
+      "ConstraintDescription" : "must be a valid EC2 instance type.",
+      "Default" : "t1.micro"
     },
 
     "ReadOnlyBucket" : {
       "Description" : "Bucket with the binaries required for building and deploy Havoc",
-      "Type" : "String"
+      "Type" : "String",
+      "Default" : "inf-deploy"
       },
 
     "StackBucket" : {
       "Description" : "Bucket for storing artifacts for this pipeline",
-      "Type" : "String"
+      "Type" : "String",
+      "Default" : "inf-deploy"
     }
   },
 
@@ -161,8 +171,8 @@
                 "owner" : "root",
                 "group" : "root"
               },
-              "/usr/share/tomcat6/webapps/jenkins.war" : {
-                "source" : "http://mirrors.jenkins-ci.org/war/1.480/jenkins.war",
+			    "/usr/share/tomcat6/webapps/jenkins.war" : {
+                "source" : "http://mirrors.jenkins-ci.org/war/1.640/jenkins.war",
                 "mode" : "000744",
                 "owner" : "tomcat",
                 "group" : "tomcat",
@@ -254,12 +264,14 @@
             },
             "packages" : {
               "yum" : {
-                "tomcat6"       : [],
-                "git"           : [],
-                "gcc"           : [],
-                "libxslt-devel" : [],
-                "ruby-devel"    : [],
-                "httpd"         : []
+                "tomcat6"       	: [],
+                "git"           	: [],
+                "gcc"           	: [],
+                "libxslt-devel" 	: [],
+                "ruby-devel"    	: [],
+                "httpd"         	: [],
+                "java-1.7.0-openjdk"    : [],
+                "mc"    		: []
               }
             }
           }          
@@ -283,7 +295,6 @@
         "UserData"       : { "Fn::Base64" : { "Fn::Join" : ["", [
           "#!/bin/bash -v\n",
           "date > starttime",
-          "yum -y install java-1.6.0-openjdk*\n",
           "yum update -y aws-cfn-bootstrap\n",
 
           "# Install Packages\n",
@@ -332,7 +343,7 @@
 
           "# Update Jenkins with versioned configuration\n",
           "rm -rf /usr/share/tomcat6/.jenkins\n",
-          "git clone git@github.com:", { "Ref" : "GithubOrganization" }, "/", { "Ref" : "ProjectName" }, "_jenkins.git /usr/share/tomcat6/.jenkins\n",
+          "git clone git@github.com:", { "Ref" : "GithubOrganization" }, "/", { "Ref" : "ProjectName" }, ".git /usr/share/tomcat6/.jenkins\n",
 
           "wget -P /tmp/ https://raw.github.com/stelligent/opendelivery_platform/master/lib/boot.rb --no-check-certificate\n",
           "wget -P /tmp/ https://raw.github.com/stelligent/opendelivery_platform/master/lib/stack_builder.rb --no-check-certificate\n",
@@ -398,6 +409,8 @@
       "Properties" : {
         "GroupDescription" : "Enable SSH and access to Apache and Tomcat",
         "SecurityGroupIngress" : [
+          {"IpProtocol" : "tcp", "FromPort" : "22", "ToPort" : "22", "CidrIp" : "0.0.0.0/0"},
+          {"IpProtocol" : "tcp", "FromPort" : "80", "ToPort" : "80", "CidrIp" : "0.0.0.0/0"}
         ]
       }
     },
