@@ -98,7 +98,7 @@
     "StackBucket": {
         "Type": "AWS::S3::Bucket",
         "Properties": {
-            "BucketName": {"Fn::Join": ["", ["havocdata-", {"Ref": "AWS::StackName"} ] ] }
+            "BucketName": {"Fn::Join": ["", ["sqerison-", {"Ref": "AWS::StackName"} ] ] }
         }
     },
     "Group": {
@@ -298,7 +298,7 @@
       "ruby /tmp/s3_upload.rb --filename /root/.ssh/id_rsa                                     --key private/id_rsa                                    --bucket ", { "Ref" : "StackBucket" } , "\n",
       "ruby /tmp/s3_upload.rb --filename /root/.ssh/id_rsa.pub                                 --key private/id_rsa.pub                                --bucket ", { "Ref" : "StackBucket" } , "\n",
       "ruby /tmp/s3_upload.rb --filename /tmp/platform_setup.template                          --key templates/platform_setup.template                 --bucket ", { "Ref" : "StackBucket" } , "\n",
-      "ruby /tmp/s3_upload.rb --filename /tmp/jenkins.linux.template                           --key templates/jenkins.template                        --bucket ", { "Ref" : "StackBucket" } , "\n",
+      "ruby /tmp/s3_upload.rb --filename /tmp/jenkins.linux.template                           --key templates/jenkins.linux.template                  --bucket ", { "Ref" : "StackBucket" } , "\n",
       "ruby /tmp/s3_upload.rb --filename /tmp/redis-2.6.2-1.el5.x86_64.rpm                     --key resources/rpm/redis-2.6.2-1.el5.x86_64.rpm        --bucket ", { "Ref" : "StackBucket" } , "\n",
       "ruby /tmp/s3_upload.rb --filename /tmp/puppet.tar.gz                                    --key resources/rpm/puppet.tar.gz                       --bucket ", { "Ref" : "StackBucket" } , "\n",
       "ruby /tmp/s3_upload.rb --filename /tmp/capistrano.tar.gz                                --key resources/rpm/capistrano.tar.gz                   --bucket ", { "Ref" : "StackBucket" } , "\n",
@@ -334,7 +334,7 @@
           "Type" : "AWS::CloudFormation::Stack",
           "DependsOn" : "WaitCondition",
           "Properties" : {
-            "TemplateURL" : { "Fn::Join" : ["", ["https://", { "Fn::FindInMap" : [ "S3RegionEndPoints", { "Ref" : "AWS::Region" }, "Endpoint"]} ,"/", { "Ref" : "StackBucket" }, "/templates/jenkins.template"]]},
+            "TemplateURL" : { "Fn::Join" : ["", ["https://s3-us-west-2.amazonaws.com/inf-deploy/templates/jenkins.linux.template"]]},
 
             "TimeoutInMinutes" : "20",
             "Parameters" : {
