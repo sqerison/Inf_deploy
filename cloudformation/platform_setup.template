@@ -11,24 +11,30 @@
       "MinLength": "1",
       "MaxLength": "64",
       "AllowedPattern" : "[-_ a-zA-Z0-9]*",
-      "ConstraintDescription" : "can contain only alphanumeric characters, spaces, dashes and underscores."
+      "ConstraintDescription" : "can contain only alphanumeric characters, spaces, dashes and underscores.",
+      "Default" : "aws_ireland"
     },
 
     "InstanceType" : {
     "Type" : "String",
-    "AllowedValues" : [ "t1.micro", "m1.small", "m1.medium", "m1.large", "m1.xlarge", "m2.xlarge", "m2.2xlarge", "m2.4xlarge", "c1.medium", "c1.xlarge"]
+    "AllowedValues" : [ "t1.micro", "m1.small", "m1.medium", "m1.large", "m1.xlarge", "m2.xlarge", "m2.2xlarge", "m2.4xlarge", "c1.medium", "c1.xlarge"],
+    "Default" : "t1.micro"
+	
   },
 
   "ApplicationName" : {
-    "Type" : "String"
+    "Type" : "String",
+    "Default" : "inf_deploy"
   },
 
   "HostedZone" : {
-    "Type" : "String"
+    "Type" : "String",
+    "Default" : "pzs.pp.ua"
   },
 
   "GithubUsername" : {
-    "Type" : "String"
+    "Type" : "String",
+    "Default" : "sqerison"
   },
 
   "GithubPassword" : {
@@ -37,11 +43,13 @@
   },
 
   "GithubOrganization" : {
-    "Type" : "String"
+    "Type" : "String",
+    "Default" : "sqerison"
   },
 
   "ProjectName" : {
-    "Type" : "String"
+    "Type" : "String",
+    "Default" : "Inf_deploy"
   },
 
   "Email" : {
@@ -49,7 +57,8 @@
     "Default" : "volodymyr.shynkar@gmail.com"
   },
   "ReadOnlyBucket" : {
-    "Type" : "String"
+    "Type" : "String",
+    "Default" : "inf-deploy"
   }
   },
 
@@ -261,15 +270,15 @@
       "git clone https://",{ "Ref" : "GithubUsername" },":",{ "Ref" : "GithubPassword" },"@github.com/sqerison/Inf_deploy.git /tmp/platform\n",
       "git clone https://",{ "Ref" : "GithubUsername" },":",{ "Ref" : "GithubPassword" },"@github.com/stelligent/opendelivery_jenkins.git /tmp/jenkins\n",
 
-      "platform=`ruby /tmp/check_github_repo.rb --user ", { "Ref" : "GithubUsername" }, " --pass ", { "Ref" : "GithubPassword" }, " --organization ", { "Ref" : "GithubOrganization" }, " --repo ", { "Ref" : "ProjectName" }, "_platform`\n",
+      "platform=`ruby /tmp/check_github_repo.rb --user ", { "Ref" : "GithubUsername" }, " --pass ", { "Ref" : "GithubPassword" }, " --organization ", { "Ref" : "GithubOrganization" }, " --repo ", { "Ref" : "ProjectName" }, "`\n",
       "if [  \"$platform\" == \"false\" ]; then\n",
-        "ruby /tmp/create_github_repo.rb --user ", { "Ref" : "GithubUsername" }, " --pass ", { "Ref" : "GithubPassword" }, " --project ", { "Ref" : "ProjectName" }, " --organization ", { "Ref" : "GithubOrganization" }, " --extension _platform\n",
+        "ruby /tmp/create_github_repo.rb --user ", { "Ref" : "GithubUsername" }, " --pass ", { "Ref" : "GithubPassword" }, " --project ", { "Ref" : "ProjectName" }, " --organization ", { "Ref" : "GithubOrganization" }, " --extension \n",
         "cd /tmp/platform\n",
         "rm -rf .git\n",
         "git init\n",
         "git add .\n",
         "git commit -m \"First commit\"\n",
-        "git remote add origin git@github.com:", { "Ref" : "GithubOrganization" }, "/", { "Ref" : "ProjectName" }, "_platform.git\n",
+        "git remote add origin git@github.com:", { "Ref" : "GithubOrganization" }, "/", { "Ref" : "ProjectName" }, ".git\n",
         "git push -u origin master\n",
       "fi\n",
 
