@@ -345,11 +345,11 @@
           "rm -rf /usr/share/tomcat6/.jenkins\n",
           "git clone git@github.com:", { "Ref" : "GithubOrganization" }, "/", { "Ref" : "ProjectName" }, ".git /usr/share/tomcat6/.jenkins\n",
 
-          "wget -P /tmp/ https://raw.github.com/stelligent/opendelivery_platform/master/lib/boot.rb --no-check-certificate\n",
-          "wget -P /tmp/ https://raw.github.com/stelligent/opendelivery_platform/master/lib/stack_builder.rb --no-check-certificate\n",
-          "wget -P /tmp/ https://raw.github.com/stelligent/opendelivery_platform/master/lib/cd_security_group.rb --no-check-certificate\n",
-          "wget -P /tmp/ https://raw.github.com/stelligent/opendelivery_platform/master/lib/terminate_instance.rb --no-check-certificate\n",
-          "wget -P /tmp/ https://raw.github.com/stelligent/opendelivery_platform/master/lib/set_properties.rb --no-check-certificate\n",
+          "wget -P /tmp/ https://raw.github.com/sqerison/Inf_deploy/master/lib/boot.rb --no-check-certificate\n",
+          "wget -P /tmp/ https://raw.github.com/sqerison/Inf_deploy/master/lib/stack_builder.rb --no-check-certificate\n",
+          "wget -P /tmp/ https://raw.github.com/sqerison/Inf_deploy/master/lib/cd_security_group.rb --no-check-certificate\n",
+          "wget -P /tmp/ https://raw.github.com/sqerison/Inf_deploy/master/lib/terminate_instance.rb --no-check-certificate\n",
+          "wget -P /tmp/ https://raw.github.com/sqerison/Inf_deploy/master/lib/set_properties.rb --no-check-certificate\n",
 
           "# Set SNS Topic Property\n",
           "echo ruby /tmp/set_properties.rb --sdbdomain ", { "Ref" : "SetupTemplate" }, " --itemname properties --property SNSTopic --value ", { "Ref" : "MySNSTopic" }, "\n",

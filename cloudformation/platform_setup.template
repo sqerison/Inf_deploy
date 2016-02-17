@@ -45,7 +45,8 @@
   },
 
   "Email" : {
-    "Type" : "String"
+    "Type" : "String",
+    "Default" : "volodymyr.shynkar@gmail.com"
   },
   "ReadOnlyBucket" : {
     "Type" : "String"
@@ -206,19 +207,19 @@
       "ln -s /usr/bin/gem1.9 /usr/bin/gem\n",
 
       "# Get CD Platform Files\n",
-      "wget -P /tmp/ https://raw.github.com/stelligent/opendelivery_platform/master/lib/boot.rb --no-check-certificate\n",
-      "wget -P /tmp/ https://raw.github.com/stelligent/opendelivery_platform/master/lib/stack_builder.rb --no-check-certificate\n",
-      "wget -P /tmp/ https://raw.github.com/stelligent/opendelivery_platform/master/lib/database_export.rb --no-check-certificate\n",
-      "wget -P /tmp/ https://raw.github.com/stelligent/opendelivery_platform/master/lib/s3_upload.rb --no-check-certificate\n",
-      "wget -P /tmp/ https://raw.github.com/stelligent/opendelivery_platform/master/lib/create_domain.rb --no-check-certificate\n",
-      "wget -P /tmp/ https://raw.github.com/stelligent/opendelivery_platform/master/lib/showback_domain.rb --no-check-certificate\n",
-      "wget -P /tmp/ https://raw.github.com/stelligent/opendelivery_platform/master/lib/set_properties.rb --no-check-certificate\n",
-      "wget -P /tmp/ https://raw.github.com/stelligent/opendelivery_platform/master/lib/add_github_key.rb --no-check-certificate\n",
-      "wget -P /tmp/ https://raw.github.com/stelligent/opendelivery_platform/master/lib/check_github_repo.rb --no-check-certificate\n",
-      "wget -P /tmp/ https://raw.github.com/stelligent/opendelivery_platform/master/lib/create_github_repo.rb --no-check-certificate\n",
-      "wget -P /tmp/ https://raw.github.com/stelligent/opendelivery_platform/master/lib/transient_environments.rb --no-check-certificate\n",
-      "wget -P /tmp/ https://raw.github.com/stelligent/opendelivery_platform/master/cloudformation/platform_setup.template --no-check-certificate\n",
-      "wget -P /tmp/ https://raw.github.com/stelligent/opendelivery_platform/master/cloudformation/jenkins.linux.template --no-check-certificate\n",
+      "wget -P /tmp/ https://raw.github.com/sqerison/Inf_deploy/master/lib/boot.rb --no-check-certificate\n",
+      "wget -P /tmp/ https://raw.github.com/sqerison/Inf_deploy/master/lib/stack_builder.rb --no-check-certificate\n",
+      "wget -P /tmp/ https://raw.github.com/sqerison/Inf_deploy/master/lib/database_export.rb --no-check-certificate\n",
+      "wget -P /tmp/ https://raw.github.com/sqerison/Inf_deploy/master/lib/s3_upload.rb --no-check-certificate\n",
+      "wget -P /tmp/ https://raw.github.com/sqerison/Inf_deploy/master/lib/create_domain.rb --no-check-certificate\n",
+      "wget -P /tmp/ https://raw.github.com/sqerison/Inf_deploy/master/lib/showback_domain.rb --no-check-certificate\n",
+      "wget -P /tmp/ https://raw.github.com/sqerison/Inf_deploy/master/lib/set_properties.rb --no-check-certificate\n",
+      "wget -P /tmp/ https://raw.github.com/sqerison/Inf_deploy/master/lib/add_github_key.rb --no-check-certificate\n",
+      "wget -P /tmp/ https://raw.github.com/sqerison/Inf_deploy/master/lib/check_github_repo.rb --no-check-certificate\n",
+      "wget -P /tmp/ https://raw.github.com/sqerison/Inf_deploy/master/lib/create_github_repo.rb --no-check-certificate\n",
+      "wget -P /tmp/ https://raw.github.com/sqerison/Inf_deploy/master/lib/transient_environments.rb --no-check-certificate\n",
+      "wget -P /tmp/ https://raw.github.com/sqerison/Inf_deploy/master/cloudformation/platform_setup.template --no-check-certificate\n",
+      "wget -P /tmp/ https://raw.github.com/sqerison/Inf_deploy/master/cloudformation/jenkins.linux.template --no-check-certificate\n",
       "# we assume this will be in US-East-1. \n",
       "wget -P /tmp/ https://s3-external-1.amazonaws.com/",{ "Ref" : "ReadOnlyBucket" },"/resources/rpm/redis-2.6.2-1.el5.x86_64.rpm --no-check-certificate\n",
       "wget -P /tmp/ https://s3-external-1.amazonaws.com/",{ "Ref" : "ReadOnlyBucket" },"/capistrano.tar.gz --no-check-certificate\n",
@@ -257,7 +258,7 @@
       "ruby /tmp/add_github_key.rb  --publicKey /root/.ssh/id_rsa.pub --user ", { "Ref" : "GithubUsername" }, " --pass ", { "Ref" : "GithubPassword" }, "\n",
 
       "# Clone Github Repository\n",
-      "git clone https://",{ "Ref" : "GithubUsername" },":",{ "Ref" : "GithubPassword" },"@github.com/stelligent/opendelivery_platform.git /tmp/platform\n",
+      "git clone https://",{ "Ref" : "GithubUsername" },":",{ "Ref" : "GithubPassword" },"@github.com/sqerison/Inf_deploy.git /tmp/platform\n",
       "git clone https://",{ "Ref" : "GithubUsername" },":",{ "Ref" : "GithubPassword" },"@github.com/stelligent/opendelivery_jenkins.git /tmp/jenkins\n",
 
       "platform=`ruby /tmp/check_github_repo.rb --user ", { "Ref" : "GithubUsername" }, " --pass ", { "Ref" : "GithubPassword" }, " --organization ", { "Ref" : "GithubOrganization" }, " --repo ", { "Ref" : "ProjectName" }, "_platform`\n",
